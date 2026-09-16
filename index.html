@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz de Fútbol</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 30px 15px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0b6b32, #123c24);
+      color: #1d1d1d;
+    }
+
+    #app {
+      max-width: 850px;
+      margin: auto;
+      padding: 30px;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    h1, h2, h3 {
+      color: #0b6b32;
+    }
+
+    button {
+      border: none;
+      border-radius: 7px;
+      padding: 12px 16px;
+      margin: 6px 4px 6px 0;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      background: #0b6b32;
+      color: white;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #084d24;
+      transform: translateY(-1px);
+    }
+
+    .btn-secundario {
+      background: #555;
+    }
+
+    .btn-peligro {
+      background: #bb2525;
+    }
+
+    .btn-agregar {
+      background: #1b7db7;
+    }
+
+    .opciones {
+      display: grid;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .opcion {
+      text-align: left;
+      border: 2px solid #d8d8d8;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    .opcion:hover {
+      background: #e8f6ec;
+      border-color: #0b6b32;
+    }
+
+    .opcion.seleccionada {
+      color: white;
+      background: #167b3e;
+      border-color: #0b6b32;
+    }
+
+    .opcion.correcta {
+      color: white;
+      background: #14833d;
+      border-color: #14833d;
+    }
+
+    .opcion.incorrecta {
+      color: white;
+      background: #c92b2b;
+      border-color: #c92b2b;
+    }
+
+    .retroalimentacion {
+      min-height: 28px;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    .bueno {
+      color: #14833d;
+    }
+
+    .malo {
+      color: #c92b2b;
+    }
+
+    .tarjeta-edicion {
+      margin: 20px 0;
+      padding: 18px;
+      border: 1px solid #d5d5d5;
+      border-left: 6px solid #0b6b32;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 7px 0 12px;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .opcion-edicion {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    .opcion-edicion input[type="text"] {
+      margin: 0;
+    }
+
+    .resultado-pregunta {
+      margin: 14px 0;
+      padding: 12px;
+      border-left: 5px solid #0b6b32;
+      background: #f1f8f3;
+      border-radius: 5px;
+    }
+
+    .etiqueta-correcta {
+      color: #14833d;
+      font-weight: bold;
+    }
+
+    .mensaje-error {
+      color: #b32222;
+      font-weight: bold;
+    }
+
+    @media (max-width: 600px) {
+      #app {
+        padding: 20px;
+      }
+
+      .opcion-edicion {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main id="app"></main>
+
+  <script>
+    /*
+      Cada pregunta es un objeto.
+      correctAnswer guarda la posición de la opción correcta:
+      0 = primera opción, 1 = segunda, etc.
+    */
+    let questions = [
+      {
+        question: "¿Cuántos jugadores tiene un equipo de fútbol en el campo al comenzar un partido?",
+        options: ["9 jugadores", "10 jugadores", "11 jugadores", "12 jugadores"],
+        correctAnswer: 2
+      },
+      {
+        question: "¿Cada cuántos años se celebra normalmente la Copa Mundial de la FIFA?",
+        options: ["Cada 2 años", "Cada 3 años", "Cada 4 años", "Cada 5 años"],
+        correctAnswer: 2
+      },
+      {
+        question: "¿Qué tarjeta expulsa directamente a un jugador?",
+        options: ["Tarjeta amarilla", "Tarjeta roja", "Tarjeta azul", "Tarjeta verde"],
+        correctAnswer: 1
+      },
+      {
+        question: "¿Qué jugador es conocido históricamente como 'El Rey' del fútbol brasileño?",
+        options: ["Pelé", "Neymar", "Ronaldinho", "Kaká"],
+        correctAnswer: 0
+      },
+      {
+        question: "¿Cómo se llama la acción de marcar tres goles en un mismo partido?",
+        options: ["Gol olímpico", "Hat-trick", "Fuera de juego", "Penalti"],
+        correctAnswer: 1
+      }
+    ];
+
+    // Estado del quiz en memoria: se pierde al refrescar la página.
+    let currentQuestion = 0;
+    let score = 0;
+    let selectedAnswer = null;
+    let submitted = false;
+
+    const app = document.querySelector("#app");
+
+    const createButton = (text, className, action) => {
+      const button = document.createElement("button");
+      button.textContent = text;
+
+      if (className) {
+        button.className = className;
+      }
+
+      button.addEventListener("click", action);
+
+      return button;
+    };
+
+    const clearApp = () => {
+      app.innerHTML = "";
+    };
+
+    const goHome = () => {
+      renderHome();
+    };
+
+    const resetQuizState = () => {
+      currentQuestion = 0;
+      score = 0;
+      selectedAnswer = null;
+      submitted = false;
+    };
+
+    // Pantalla 1: Inicio.
+    const renderHome = () => {
+      clearApp();
+
+      const title = document.createElement("h1");
+      title.textContent = "Quiz Interactivo de Fútbol";
+
+      const description = document.createElement("p");
+      description.textContent =
+        "Selecciona si deseas contestar el quiz o editar sus preguntas.";
+
+      const answerButton = createButton(
+        "Contestar preguntas",
+        "",
+        () => {
+          resetQuizState();
+          renderQuiz();
+        }
+      );
+
+      const editButton = createButton(
+        "Editar preguntas",
+        "btn-secundario",
+        renderEditor
+      );
+
+      app.append(title, description, answerButton, editButton);
+    };
+
+    // Pantalla 3: Quiz.
+    const renderQuiz = () => {
+      clearApp();
+
+      const { question, options } = questions[currentQuestion];
+
+      const title = document.createElement("h2");
+      title.textContent = "Contesta el Quiz";
+
+      const progress = document.createElement("p");
+      progress.textContent = `Pregunta ${currentQuestion + 1} de ${questions.length}`;
+
+      const scoreText = document.createElement("p");
+      scoreText.textContent = `Puntuación actual: ${score}`;
+
+      const questionText = document.createElement("h3");
+      questionText.textContent = question;
+
+      const optionsContainer = document.createElement("div");
+      optionsContainer.className = "opciones";
+
+      options.forEach((option, index) => {
+        const optionButton = document.createElement("button");
+        optionButton.className = "opcion";
+        optionButton.textContent = option;
+
+        // Escuchar el clic de cada respuesta.
+        optionButton.addEventListener("click", () => {
+          if (submitted) return;
+
+          selectedAnswer = index;
+
+          [...optionsContainer.children].forEach((button) => {
+            button.classList.remove("seleccionada");
+          });
+
+          optionButton.classList.add("seleccionada");
+        });
+
+        optionsContainer.appendChild(optionButton);
+      });
+
+      const feedback = document.createElement("p");
+      feedback.className = "retroalimentacion";
+
+      const submitButton = createButton(
+        "Submit respuesta",
+        "",
+        () => {
+          if (selectedAnswer === null) {
+            feedback.textContent = "Debes seleccionar una opción antes de enviar.";
+            feedback.className = "retroalimentacion malo";
+            return;
+          }
+
+          submitted = true;
+
+          const isCorrect = selectedAnswer === questions[currentQuestion].correctAnswer;
+          const buttons = [...optionsContainer.children];
+
+          buttons.forEach((button, index) => {
+            button.disabled = true;
+
+            if (index === questions[currentQuestion].correctAnswer) {
+              button.classList.add("correcta");
+            }
+
+            if (
+              index === selectedAnswer &&
+              selectedAnswer !== questions[currentQuestion].correctAnswer
+            ) {
+              button.classList.add("incorrecta");
+            }
+          });
+
+          if (isCorrect) {
+            score++;
+            feedback.textContent = "¡Bueno! Tu respuesta es correcta.";
+            feedback.className = "retroalimentacion bueno";
+          } else {
+            feedback.textContent = "Malo. Esa respuesta no es correcta.";
+            feedback.className = "retroalimentacion malo";
+          }
+
+          submitButton.disabled = true;
+          nextButton.style.display = "inline-block";
+        }
+      );
+
+      const nextButton = createButton(
+        currentQuestion === questions.length - 1
+          ? "Ver resultados"
+          : "Siguiente pregunta",
+        "btn-secundario",
+        () => {
+          if (currentQuestion < questions.length - 1) {
+            currentQuestion++;
+            selectedAnswer = null;
+            submitted = false;
+            renderQuiz();
+          } else {
+            renderResults();
+          }
+        }
+      );
+
+      nextButton.style.display = "none";
+
+      const homeButton = createButton(
+        "Volver al inicio",
+        "btn-secundario",
+        goHome
+      );
+
+      app.append(
+        title,
+        progress,
+        scoreText,
+        questionText,
+        optionsContainer,
+        feedback,
+        submitButton,
+        nextButton,
+        homeButton
+      );
+    };
+
+    // Pantalla 4: Resultados.
+    const renderResults = () => {
+      clearApp();
+
+      const title = document.createElement("h2");
+      title.textContent = "Resultados del Quiz";
+
+      const finalScore = document.createElement("h3");
+      finalScore.textContent = `Puntuación final: ${score} de ${questions.length}`;
+
+      const explanation = document.createElement("p");
+      explanation.textContent = "Estas son las respuestas correctas:";
+
+      const answersContainer = document.createElement("section");
+
+      questions.forEach(({ question, options, correctAnswer }, index) => {
+        const card = document.createElement("article");
+        card.className = "resultado-pregunta";
+
+        const questionResult = document.createElement("p");
+        questionResult.textContent = `${index + 1}. ${question}`;
+
+        const correctResult = document.createElement("p");
+        correctResult.className = "etiqueta-correcta";
+        correctResult.textContent = `Respuesta correcta: ${options[correctAnswer]}`;
+
+        card.append(questionResult, correctResult);
+        answersContainer.appendChild(card);
+      });
+
+      const retryButton = createButton(
+        "Retomar el quiz",
+        "",
+        () => {
+          resetQuizState();
+          renderQuiz();
+        }
+      );
+
+      const homeButton = createButton(
+        "Volver al inicio",
+        "btn-secundario",
+        goHome
+      );
+
+      app.append(
+        title,
+        finalScore,
+        explanation,
+        answersContainer,
+        retryButton,
+        homeButton
+      );
+    };
+
+    // Pantalla 2: Editor de preguntas.
+    const renderEditor = () => {
+      clearApp();
+
+      const title = document.createElement("h2");
+      title.textContent = "Editar preguntas del Quiz";
+
+      const instructions = document.createElement("p");
+      instructions.textContent =
+        "Edita la pregunta, las cuatro opciones y marca cuál respuesta es la correcta.";
+
+      const editorContainer = document.createElement("section");
+
+      questions.forEach((questionData, questionIndex) => {
+        const card = document.createElement("article");
+        card.className = "tarjeta-edicion";
+
+        const heading = document.createElement("h3");
+        heading.textContent = `Pregunta ${questionIndex + 1}`;
+
+        const questionLabel = document.createElement("label");
+        questionLabel.textContent = "Texto de la pregunta:";
+
+        const questionInput = document.createElement("input");
+        questionInput.type = "text";
+        questionInput.value = questionData.question;
+
+        questionInput.addEventListener("input", (event) => {
+          questions[questionIndex].question = event.target.value;
+        });
+
+        card.append(heading, questionLabel, questionInput);
+
+        questionData.options.forEach((option, optionIndex) => {
+          const optionRow = document.createElement("div");
+          optionRow.className = "opcion-edicion";
+
+          const correctRadio = document.createElement("input");
+          correctRadio.type = "radio";
+          correctRadio.name = `correct-question-${questionIndex}`;
+          correctRadio.checked = questionData.correctAnswer === optionIndex;
+
+          // Evento que define cuál alternativa dará puntos.
+          correctRadio.addEventListener("change", () => {
+            questions[questionIndex].correctAnswer = optionIndex;
+          });
+
+          const optionInput = document.createElement("input");
+          optionInput.type = "text";
+          optionInput.value = option;
+
+          optionInput.addEventListener("input", (event) => {
+            questions[questionIndex].options[optionIndex] = event.target.value;
+          });
+
+          optionRow.append(correctRadio, optionInput);
+          card.appendChild(optionRow);
+        });
+
+        const deleteButton = createButton(
+          "Eliminar pregunta",
+          "btn-peligro",
+          () => {
+            if (questions.length <= 1) {
+              alert("Debe existir al menos una pregunta en el quiz.");
+              return;
+            }
+
+            questions.splice(questionIndex, 1);
+            renderEditor();
+          }
+        );
+
+        card.appendChild(deleteButton);
+        editorContainer.appendChild(card);
+      });
+
+      const addQuestionButton = createButton(
+        "Agregar nueva pregunta",
+        "btn-agregar",
+        () => {
+          const newQuestion = {
+            question: "Escribe una nueva pregunta de fútbol",
+            options: [
+              "Opción correcta",
+              "Opción incorrecta 1",
+              "Opción incorrecta 2",
+              "Opción incorrecta 3"
+            ],
+            correctAnswer: 0
+          };
+
+          // Spread crea un nuevo arreglo en memoria.
+          questions = [...questions, newQuestion];
+          renderEditor();
+        }
+      );
+
+      const saveButton = createButton(
+        "Guardar cambios",
+        "",
+        () => {
+          const invalidQuestion = questions.some(({ question, options }) => {
+            return question.trim() === "" || options.some((option) => option.trim() === "");
+          });
+
+          if (invalidQuestion) {
+            const error = document.createElement("p");
+            error.className = "mensaje-error";
+            error.textContent =
+              "No se puede guardar: todas las preguntas y opciones deben tener texto.";
+
+            app.appendChild(error);
+            return;
+          }
+
+          alert("Los cambios fueron guardados en memoria.");
+        }
+      );
+
+      const quizButton = createButton(
+        "Realizar el quiz editado",
+        "",
+        () => {
+          resetQuizState();
+          renderQuiz();
+        }
+      );
+
+      const homeButton = createButton(
+        "Volver al inicio",
+        "btn-secundario",
+        goHome
+      );
+
+      app.append(
+        title,
+        instructions,
+        editorContainer,
+        addQuestionButton,
+        saveButton,
+        quizButton,
+        homeButton
+      );
+    };
+
+    // Inicia la aplicación sin cambiar de página.
+    renderHome();
+  </script>
+</body>
+</html>
